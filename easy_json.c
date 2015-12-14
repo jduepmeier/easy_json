@@ -75,7 +75,7 @@ int ejson_check_float(char* s) {
 
 			switch(*s) {
 				case '.':
-					return EJSON_FLOAT;
+					return EJSON_DOUBLE;
 				case ',':
 				case '}':
 				case ']':
@@ -369,9 +369,9 @@ void ejson_parse_number(ejson_state* state, ejson_struct** ejson_output) {
 	strtol(state->pos, &end, 10);
 
 	if (*end == '.') {
-		printf("Number is float\n");
-		ejson->type = EJSON_FLOAT;
-		strtof(state->pos, &end);
+		printf("Number is double\n");
+		ejson->type = EJSON_DOUBLE;
+		strtod(state->pos, &end);
 	} else {
 		printf("Number is int\n");
 		ejson->type = EJSON_INT;
