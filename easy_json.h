@@ -105,10 +105,10 @@ enum ejson_errors ejson_get_double(ejson_struct* ejson, double* i);
 /**
  * Gets the value of the given struct as string.
  * @param ejson_struct* ejson json struct
- * @param char* s place for holding the string. Must not be freed.
+ * @param char** s place for holding the string. Must not be freed.
  * @return enum ejson_errors returns EJSON_WRONG_TYPE if there is an error.
  */
-enum ejson_errors ejson_get_string(ejson_struct* ejson, char* s);
+enum ejson_errors ejson_get_string(ejson_struct* ejson, char** s);
 
 /**
  * Gets the value as boolean from the given struct.
