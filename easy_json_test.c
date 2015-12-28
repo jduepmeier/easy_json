@@ -16,8 +16,8 @@ void print_type(ejson_struct* ejson) {
 		case EJSON_INT:
 			printf("int\n");
 			break;
-		case EJSON_FLOAT:
-			printf("float\n");
+		case EJSON_DOUBLE:
+			printf("double\n");
 			break;
 		case EJSON_STRING:
 			printf("string\n");
