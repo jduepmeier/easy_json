@@ -45,13 +45,13 @@ enum ejson_errors ejson_get_double(ejson_struct* ejson, double* i) {
 	return EJSON_OK;
 }
 
-enum ejson_errors ejson_get_string(ejson_struct* ejson, char* s) {
+enum ejson_errors ejson_get_string(ejson_struct* ejson, char** s) {
 
 	if (ejson->type != EJSON_STRING) {
 		return EJSON_WRONG_TYPE;
 	}
 
-	s = ejson->value;
+	*s = ejson->value;
 
 	return EJSON_OK;
 }
@@ -256,6 +256,7 @@ void ejson_parse_string(ejson_state* state, ejson_struct** ejson_output) {
 
 	if (state->error != EJSON_OK) {
 		//printf("state not ok.\n");
+		free(ejson);
 		return;
 	}
 	
@@ -298,6 +299,9 @@ void ejson_parse_array(ejson_state* state, ejson_struct** ejson_output) {
 		ejson_identify(state, &ejson_in_array);
 
 		if (state->error != EJSON_OK) {
+			if(ejson_in_array){
+				free(ejson_in_array);
+			}
 			return;
 		}
 
@@ -362,6 +366,7 @@ void ejson_parse_bool(ejson_state* state, ejson_struct** ejson_output) {
 	} else {
 		state->error = EJSON_INVALID_JSON;
 		state->reason = "Cannot parse boolean.";
+		free(ejson);
 		return;
 	}
 
@@ -450,6 +455,7 @@ void ejson_parse_object(ejson_state* state, ejson_struct** ejson_output) {
 		
 		// check for error
 		if (state->error != EJSON_OK) {
+			free(ejson);
 			return;
 		}
 
@@ -457,6 +463,7 @@ void ejson_parse_object(ejson_state* state, ejson_struct** ejson_output) {
 		if (!ejson_in_object->key) {
 			state->error = EJSON_INVALID_JSON;
 			state->reason = "Element has no key in object.";
+			free(ejson);
 			return;
 		}
 
@@ -484,6 +491,7 @@ void ejson_parse_object(ejson_state* state, ejson_struct** ejson_output) {
 				state->error = EJSON_INVALID_JSON;
 				state->reason = "Invalid char at this position.";
 				//printf("char: (%c)\n", *state->pos);
+				free(ejson);
 				return;
 		}
 	}
@@ -491,6 +499,7 @@ void ejson_parse_object(ejson_state* state, ejson_struct** ejson_output) {
 	if (*state->pos != '}') {
 		state->error = EJSON_INVALID_JSON;
 		state->reason = "Cannot find trailing }.";
+		free(ejson);
 		return;
 	}
 
