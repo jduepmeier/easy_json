@@ -114,8 +114,6 @@ char* ejson_trim(char* string) {
 
 char* ejson_parse_get_string(ejson_state* state) {
 
-	//printf("Get String: (%s)\n", state->pos);
-	
 	char* string = ejson_trim(state->pos);
 
 	if (*string != '"') {
@@ -568,16 +566,27 @@ void ejson_cleanup(ejson_struct* ejson) {
 }
 
 enum ejson_errors ejson_parse(ejson_struct** ejson, char* string) {
+
+	return ejson_parse_warnings(ejson, string, false, stderr);
+}
+
+enum ejson_errors ejson_parse_warnings(ejson_struct** ejson, char* string, bool warnings, FILE* log) {
 	ejson_state state = {
 		.error = EJSON_OK,
 		.reason = "",
-		.pos = string
+		.pos = string,
+		.warnings = warnings,
+		.log = log
 	};
+
+	if (!state.log) {
+		state.log = stderr;
+	}
 	
 	ejson_identify(&state, ejson);
 
-	if (state.error != EJSON_OK) {
-		//printf("Error: %s\n", state.reason);
+	if (state.error != EJSON_OK && state.warnings) {
+		fprintf(state.log, "Error: %s\n", state.reason);
 	}
 
 	return state.error;

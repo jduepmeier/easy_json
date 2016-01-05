@@ -1,7 +1,7 @@
 #pragma once
 
 #include <stdbool.h>
-
+#include <stdio.h>
 
 /**
  * Enum for eror codes.
@@ -81,8 +81,8 @@ typedef struct {
 	enum ejson_errors error;
 	char* reason;
 	char* pos;
-	bool in_array;
-	char seperator;
+	bool warnings;
+	FILE* log;
 } ejson_state;
 
 /**
@@ -128,6 +128,11 @@ enum ejson_errors ejson_get_boolean(ejson_struct* ejson, bool* b);
  * @return enum ejson_errors enum with error flags for parsing. @see enum
  */
 enum ejson_errors ejson_parse(ejson_struct** ejson, char* string);
+
+/**
+ * Same as ejson_parse but allows to write the warnings to a file or stderr.
+ */
+enum ejson_errors ejson_parse_warnings(ejson_struct** ejson, char* string, bool warnings, FILE* outputstream);
 
 /**
  * Cleanup the json structure.
