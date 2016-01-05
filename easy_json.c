@@ -549,7 +549,7 @@ void ejson_identify(ejson_state* state, ejson_struct** ejson) {
 			break;
 		default:
 			state->error = EJSON_INVALID_JSON;
-			state->reason = "Cannot identify next token.";
+			state->reason = "Cannot identify next token. Unkown identifier";
 			return;
 	}
 }
@@ -586,7 +586,7 @@ enum ejson_errors ejson_parse_warnings(ejson_struct** ejson, char* string, bool 
 	ejson_identify(&state, ejson);
 
 	if (state.error != EJSON_OK && state.warnings) {
-		fprintf(state.log, "Error: %s\n", state.reason);
+		fprintf(state.log, "Error: %s (%c).\n", state.reason, *state.pos);
 	}
 
 	return state.error;
