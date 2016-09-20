@@ -17,6 +17,29 @@ ejson_struct* ejson_init_struct() {
 	return ejson;
 }
 
+ejson_struct* ejson_find_key(ejson_struct* ejson, char* key, bool childs) {
+
+	ejson_struct* ejson_child;
+	while (ejson) {
+
+		if (ejson->key && !strcmp(ejson->key, key)) {
+			return ejson;
+		}
+
+		if (childs && ejson->child) {
+			ejson_child = ejson_find_key(ejson->child, key, childs);
+
+			if (ejson_child) {
+				return ejson_child;
+			}
+		}
+
+		ejson = ejson->next;
+	}
+
+	return NULL;
+}
+
 enum ejson_errors ejson_get_int(ejson_struct* ejson, int* i) {
 
 
@@ -161,7 +184,6 @@ char* ejson_parse_get_string(ejson_state* state) {
 					case 't':
 						string[offset] = '\t';
 						break;
-					
 					case 'u':
 						curr++;
 						if (string[curr] == 0 || string[curr + 1] == 0 || string[curr + 2] == 0 || string[curr + 3] == 0) {
@@ -219,13 +241,13 @@ char* ejson_parse_get_string(ejson_state* state) {
 }
 
 void ejson_parse_string(ejson_state* state, ejson_struct** ejson_output) {
-	ejson_struct* ejson = *ejson_output;	
-	
+	ejson_struct* ejson = *ejson_output;
+
 	char* s = ejson_parse_get_string(state);
 	//printf("Found string: (%s)\n", s);
 	state->pos = ejson_trim(state->pos);
 	char* key = NULL;
-	
+
 	if (*state->pos == ':') {
 		//printf("Key found.\n");
 		*state->pos = 0;
@@ -257,7 +279,7 @@ void ejson_parse_string(ejson_state* state, ejson_struct** ejson_output) {
 		free(ejson);
 		return;
 	}
-	
+
 	*ejson_output = ejson;
 
 	//printf("parse string out.\n");
@@ -377,7 +399,7 @@ void ejson_parse_null(ejson_state* state, ejson_struct** ejson_output) {
 	if (!ejson) {
 		ejson = malloc(sizeof(ejson_struct));
 	}
-	
+
 	if (!strncmp(state->pos, "null", 4)) {
 		ejson->type = EJSON_NULL;
 		ejson->value = NULL;
@@ -450,7 +472,7 @@ void ejson_parse_object(ejson_state* state, ejson_struct** ejson_output) {
 	// while there is something
 	while (*state->pos != 0 && *state->pos != '}') {
 		ejson_identify(state, &ejson_in_object);
-		
+
 		// check for error
 		if (state->error != EJSON_OK) {
 			free(ejson);
@@ -582,11 +604,14 @@ enum ejson_errors ejson_parse_warnings(ejson_struct** ejson, char* string, bool 
 	if (!state.log) {
 		state.log = stderr;
 	}
-	
+
 	ejson_identify(&state, ejson);
 
 	if (state.error != EJSON_OK && state.warnings) {
-		fprintf(state.log, "Error: %s (%c).\n", state.reason, *state.pos);
+
+		int p = (state.pos - string);
+
+		fprintf(state.log, "Error: %s (%d: %c).\n", state.reason, p, *state.pos);
 	}
 
 	return state.error;

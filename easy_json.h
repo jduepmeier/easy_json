@@ -35,6 +35,7 @@ enum ejson_types {
 	EJSON_NULL = 16
 };
 
+
 /**
  * Definition of the basic ejson struct.
  * To understand the structure we use:
@@ -45,8 +46,7 @@ enum ejson_types {
  * - Same is to access values in an json array.
  * - Attributes then have a key (if come from object) and a value.
  */
-typedef struct ejson_struct ejson_struct;
-struct ejson_struct {
+typedef struct _ejson_struct {
 
 	/**
 	 * Type of the struct. @see ejson_types.
@@ -57,22 +57,16 @@ struct ejson_struct {
 	 */
 	char* key;
 	/**
-	 * This holds the value of this struct.
-	 * It is NULL if the type is an json array or an json object
-	 * or the json NULL.
-	 */
-	char* value;
-	/**
 	 * This holds the child struct. It is NULL if the struct has no child.
 	 */
-	ejson_struct* child;
+	struct _ejson_struct* child;
 	/**
 	 * This holds the next struct in the list.
 	 * It is NULL if the struct is the last one in the list.
 	 */
-	ejson_struct* next;
-
-};
+	struct _ejson_struct* next;
+	char* value;
+} ejson_struct;
 
 /**
  * Internal json parser structure.
@@ -84,6 +78,15 @@ typedef struct {
 	bool warnings;
 	FILE* log;
 } ejson_state;
+
+/**
+ * Returns the struct with the given key
+ * @param ejson_struct* ejson root json struct
+ * @param char* key key to find
+ * @param bool childs check childrens of the root item
+ * @return ejson struct with the given key or null.
+ */
+ejson_struct* ejson_find_key(ejson_struct* ejson, char* key, bool childs);
 
 /**
  * Gets the value as int from given struct.
