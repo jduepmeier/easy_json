@@ -218,6 +218,11 @@ char* ejson_parse_get_string(ejson_state* state) {
 						}
 						curr++;
 						break;
+					default:
+						state->pos = string + curr;
+						state->error = EJSON_INVALID_JSON;
+						state->reason = "Unkown escape character.";
+						return NULL;
 				}
 
 				break;
@@ -244,6 +249,10 @@ void ejson_parse_string(ejson_state* state, ejson_struct** ejson_output) {
 	ejson_struct* ejson = *ejson_output;
 
 	char* s = ejson_parse_get_string(state);
+	if (state->error != EJSON_OK) {
+		return;
+	}
+
 	//printf("Found string: (%s)\n", s);
 	state->pos = ejson_trim(state->pos);
 	char* key = NULL;
@@ -287,9 +296,9 @@ void ejson_parse_string(ejson_state* state, ejson_struct** ejson_output) {
 
 void ejson_parse_array(ejson_state* state, ejson_struct** ejson_output) {
 	//printf("begin parsing array.\n");
-	
+
 	ejson_struct* ejson = *ejson_output;
-	
+
 	// check if is a array
 	state->pos = ejson_trim(state->pos);
 	if (*state->pos != '[') {
@@ -311,7 +320,7 @@ void ejson_parse_array(ejson_state* state, ejson_struct** ejson_output) {
 			ejson->type = EJSON_ARRAY;
 		}
 	}
-		
+
 	ejson_struct* lastChild = NULL;
 
 	// build values
@@ -322,6 +331,12 @@ void ejson_parse_array(ejson_state* state, ejson_struct** ejson_output) {
 			if(ejson_in_array){
 				free(ejson_in_array);
 			}
+			return;
+		}
+
+		if (ejson_in_array->key) {
+			state->error = EJSON_INVALID_JSON;
+			state->reason = "No key allowed in json array.";
 			return;
 		}
 
@@ -342,6 +357,12 @@ void ejson_parse_array(ejson_state* state, ejson_struct** ejson_output) {
 			case ',':
 				*state->pos = 0;
 				state->pos++;
+
+				if (*state->pos == ']') {
+					state->error = EJSON_INVALID_JSON;
+					state->reason = "Trailing comma is not allowed in array.";
+					return;
+				}
 				break;
 			case ']':
 				break;
@@ -395,7 +416,7 @@ void ejson_parse_bool(ejson_state* state, ejson_struct** ejson_output) {
 
 void ejson_parse_null(ejson_state* state, ejson_struct** ejson_output) {
 	ejson_struct* ejson = *ejson_output;
-	
+
 	if (!ejson) {
 		ejson = malloc(sizeof(ejson_struct));
 	}
@@ -415,6 +436,18 @@ void ejson_parse_null(ejson_state* state, ejson_struct** ejson_output) {
 void ejson_parse_number(ejson_state* state, ejson_struct** ejson_output) {
 	ejson_struct* ejson = *ejson_output;
 
+	char* leading_test = state->pos;
+	if (*leading_test == '-') {
+		leading_test++;
+	}
+
+	// check for leading zeros
+	if (leading_test[0] != 0 && leading_test[0] == '0' && leading_test[1] != '.') {
+		state->error = EJSON_INVALID_JSON;
+		state->reason = "invalid number.";
+		return;
+	}
+
 	//printf("Parse number (%s)\n", state->pos);
 
 	if (!ejson) {
@@ -431,10 +464,16 @@ void ejson_parse_number(ejson_state* state, ejson_struct** ejson_output) {
 		//printf("Number is double\n");
 		ejson->type = EJSON_DOUBLE;
 		end = "";
-		strtod(state->pos, &end);
 	} else {
 		//printf("Number is int\n");
 		ejson->type = EJSON_INT;
+	}
+
+	if (state->pos == end) {
+		state->error = EJSON_INVALID_JSON;
+		state->reason = "Cannot parse number.";
+		free(ejson);
+		return;
 	}
 	state->pos = end;
 	//printf("endptr: %c\n", *state->pos);
@@ -550,7 +589,6 @@ void ejson_identify(ejson_state* state, ejson_struct** ejson) {
 		case '8':
 		case '9':
 		case '-':
-		case '+':
 			//printf("parse number with starting: %.5s\n", state->pos);
 			ejson_parse_number(state, ejson);
 			break;
@@ -561,7 +599,8 @@ void ejson_identify(ejson_state* state, ejson_struct** ejson) {
 			ejson_parse_bool(state, ejson);
 			break;
 		case '{':
-			return ejson_parse_object(state, ejson);
+			ejson_parse_object(state, ejson);
+			break;
 		case '[':
 			ejson_parse_array(state, ejson);
 			break;
@@ -572,7 +611,7 @@ void ejson_identify(ejson_state* state, ejson_struct** ejson) {
 		default:
 			state->error = EJSON_INVALID_JSON;
 			state->reason = "Cannot identify next token. Unkown identifier";
-			return;
+			break;
 	}
 }
 
@@ -607,6 +646,16 @@ enum ejson_errors ejson_parse_warnings(ejson_struct** ejson, char* string, bool 
 
 	ejson_identify(&state, ejson);
 
+	if (state.error == EJSON_OK) {
+
+		state.pos = ejson_trim(state.pos);
+
+		if (strlen(state.pos) > 0) {
+			state.error = EJSON_INVALID_JSON;
+			state.reason = "There are characters after the structure.";
+		}
+
+	}
 	if (state.error != EJSON_OK && state.warnings) {
 
 		int p = (state.pos - string);
