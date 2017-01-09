@@ -67,18 +67,20 @@ void print_structure(ejson_struct* ejson) {
 char* read_file(char* filename) {
 
 	FILE *f = fopen(filename, "rb");
-	
+
 	if (!f) {
 		printf("Cannot open file.\n");
 		return NULL;
 	}
-	
+
 	fseek(f, 0, SEEK_END);
 	long fsize = ftell(f);
 	fseek(f, 0, SEEK_SET);
 
 	char* string =  malloc(fsize + 1);
-	fread(string, fsize, 1, f);
+	if (fread(string, fsize, 1, f) == 0) {
+		return NULL;
+	}
 	fclose(f);
 
 	string[fsize] = 0;
@@ -93,13 +95,13 @@ int main(int argc, char** argv) {
 	char* test = strdup("{\"test\":1202}");
 
 	if (argc > 1) {
-		
+
 		if (!strcmp(argv[1], "-h")) {
 			printf("%s <file>\t validates a json file.\n", argv[0]);
 			printf("%s -h\t shows this help.\n", argv[0]);
 			return 0;
 		}
-		
+
 		free(test);
 		test = read_file(argv[1]);
 	}
@@ -108,14 +110,11 @@ int main(int argc, char** argv) {
 		return 1;
 	}
 	enum ejson_errors error = ejson_parse_warnings(&ejson, test, true, stderr);
-	if (error != EJSON_OK) {
-		return error;
-	}
 
-	print_structure(ejson);
+	//print_structure(ejson);
 
 	ejson_cleanup(ejson);
 	free(test);
 
-	return 0;
+	return error;
 }

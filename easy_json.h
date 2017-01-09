@@ -75,6 +75,7 @@ typedef struct {
 	enum ejson_errors error;
 	char* reason;
 	char* pos;
+	long counter;
 	bool warnings;
 	FILE* log;
 } ejson_state;
@@ -147,4 +148,4 @@ void ejson_cleanup(ejson_struct* ejson);
 /**
  * For internal use.
  */
-void ejson_identify(ejson_state* state, ejson_struct** ejson);
+ejson_struct* ejson_identify(ejson_state* state, ejson_struct* ejson);
