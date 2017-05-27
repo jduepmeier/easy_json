@@ -74,7 +74,9 @@ typedef struct _ejson_struct {
 typedef struct {
 	enum ejson_errors error;
 	char* reason;
-	char* pos;
+	char* data;
+	size_t pos;
+	size_t len;
 	long counter;
 	bool warnings;
 	FILE* log;
@@ -131,12 +133,12 @@ enum ejson_errors ejson_get_boolean(ejson_struct* ejson, bool* b);
  * 	on the given memory.
  * @return enum ejson_errors enum with error flags for parsing. @see enum
  */
-enum ejson_errors ejson_parse(ejson_struct** ejson, char* string);
+enum ejson_errors ejson_parse(ejson_struct** ejson, char* string, size_t len);
 
 /**
  * Same as ejson_parse but allows to write the warnings to a file or stderr.
  */
-enum ejson_errors ejson_parse_warnings(ejson_struct** ejson, char* string, bool warnings, FILE* outputstream);
+enum ejson_errors ejson_parse_warnings(ejson_struct** ejson, char* string, size_t len, bool warnings, FILE* outputstream);
 
 /**
  * Cleanup the json structure.

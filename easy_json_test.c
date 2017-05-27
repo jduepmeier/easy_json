@@ -109,7 +109,7 @@ int main(int argc, char** argv) {
 	if (!test) {
 		return 1;
 	}
-	enum ejson_errors error = ejson_parse_warnings(&ejson, test, true, stderr);
+	enum ejson_errors error = ejson_parse_warnings(&ejson, test, strlen(test), true, stderr);
 
 	//print_structure(ejson);
 
