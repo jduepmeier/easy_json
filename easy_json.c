@@ -51,6 +51,19 @@ ejson_struct* ejson_find_key(ejson_struct* ejson, char* key, bool childs) {
 
 	return NULL;
 }
+enum ejson_errors ejson_get_long(ejson_struct* ejson, long* l) {
+
+
+	if (ejson->type != EJSON_INT) {
+		return EJSON_WRONG_TYPE;
+	}
+
+	int value = strtol(ejson->value, NULL, 10);
+
+	(*l) = value;
+
+	return EJSON_OK;
+}
 
 enum ejson_errors ejson_get_int(ejson_struct* ejson, int* i) {
 

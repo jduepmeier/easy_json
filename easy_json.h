@@ -102,6 +102,14 @@ enum ejson_errors ejson_get_int(ejson_struct* ejson, int* i);
 /**
  * Gets the value as int from given struct.
  * @param ejson_struct* ejson json struct
+ * @param long* l place for the returned int
+ * @return enum ejson_errors returns EJSON_WRONG_TYPE if there is an error.
+ */
+enum ejson_errors ejson_get_int(ejson_struct* ejson, long* l);
+
+/**
+ * Gets the value as int from given struct.
+ * @param ejson_struct* ejson json struct
  * @param int* i place for the returned int
  * @return enum ejson_errors returns EJSON_WRONG_TYPE if there is an error.
  */
