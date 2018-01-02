@@ -65,6 +65,17 @@ enum ejson_errors ejson_get_long(ejson_struct* ejson, long* l) {
 	return EJSON_OK;
 }
 
+enum ejson_errors ejson_get_long_from_key(ejson_struct* ejson, char* key, bool childs, long* l) {
+
+	ejson_struct* elem = ejson_find_key(ejson, key, childs);
+
+	if (!elem) {
+		return EJSON_KEY_NOT_FOUND;
+	}
+
+
+	return ejson_get_long(elem, l);
+}
 enum ejson_errors ejson_get_int(ejson_struct* ejson, int* i) {
 
 
@@ -77,6 +88,18 @@ enum ejson_errors ejson_get_int(ejson_struct* ejson, int* i) {
 	(*i) = value;
 
 	return EJSON_OK;
+}
+
+enum ejson_errors ejson_get_int_from_key(ejson_struct* ejson, char* key, bool childs, int* i) {
+
+	ejson_struct* elem = ejson_find_key(ejson, key, childs);
+
+	if (!elem) {
+		return EJSON_KEY_NOT_FOUND;
+	}
+
+
+	return ejson_get_int(elem, i);
 }
 
 enum ejson_errors ejson_get_double(ejson_struct* ejson, double* i) {
@@ -93,6 +116,18 @@ enum ejson_errors ejson_get_double(ejson_struct* ejson, double* i) {
 	return EJSON_OK;
 }
 
+enum ejson_errors ejson_get_double_from_key(ejson_struct* ejson, char* key, bool childs, double* d) {
+
+	ejson_struct* elem = ejson_find_key(ejson, key, childs);
+
+	if (!elem) {
+		return EJSON_KEY_NOT_FOUND;
+	}
+
+
+	return ejson_get_double(elem, d);
+}
+
 enum ejson_errors ejson_get_string(ejson_struct* ejson, char** s) {
 
 	if (ejson->type != EJSON_STRING) {
@@ -102,6 +137,18 @@ enum ejson_errors ejson_get_string(ejson_struct* ejson, char** s) {
 	*s = ejson->value;
 
 	return EJSON_OK;
+}
+
+enum ejson_errors ejson_get_string_from_key(ejson_struct* ejson, char* key, bool childs, char** s) {
+
+	ejson_struct* elem = ejson_find_key(ejson, key, childs);
+
+	if (!elem) {
+		return EJSON_KEY_NOT_FOUND;
+	}
+
+
+	return ejson_get_string(elem, s);
 }
 
 enum ejson_errors ejson_get_boolean(ejson_struct* ejson, bool* b) {
@@ -121,6 +168,18 @@ enum ejson_errors ejson_get_boolean(ejson_struct* ejson, bool* b) {
 	}
 
 	return EJSON_OK;
+}
+
+enum ejson_errors ejson_get_boolean_from_key(ejson_struct* ejson, char* key, bool childs, bool* b) {
+
+	ejson_struct* elem = ejson_find_key(ejson, key, childs);
+
+	if (!elem) {
+		return EJSON_KEY_NOT_FOUND;
+	}
+
+
+	return ejson_get_boolean(elem, b);
 }
 
 int ejson_check_float(char* s) {
@@ -639,6 +698,7 @@ ejson_struct* ejson_identify(ejson_state* state, ejson_struct* origin) {
 			return NULL;
 	}
 
+	state->counter--;
 	return origin;
 }
 
