@@ -1,3 +1,5 @@
 tests
 easy_json_test
-
+*.o
+*.a
+*.gcno
