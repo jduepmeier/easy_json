@@ -4,7 +4,7 @@
 #include <string.h>
 #include <stdio.h>
 
-void print_type(ejson_struct* ejson) {
+void print_type(ejson_base* ejson) {
 
 	if (!ejson) {
 		return;
@@ -37,30 +37,59 @@ void print_type(ejson_struct* ejson) {
 	}
 }
 
-void print_structure(ejson_struct* ejson) {
+extern void print_structure(ejson_base* root);
 
-	printf("print structure\n");
-	if (ejson) {
-		print_type(ejson);
-		if (ejson->key) {
-			printf("key: (%s)\n", ejson->key);
-		}
+void print_object(ejson_object* root) {
+	int i;
+	for (i = 0; i < root->length; i++) {
+		printf("%s: ", root->keys[i]->key);
+		print_structure(root->keys[i]->value);
+		printf("\n");
+	}
+	printf("\n");
+}
 
-		if (ejson->value) {
-			printf("value: (%s)\n", ejson->value);
-		}
+void print_array(ejson_array* root) {
 
-		if (ejson->child) {
-			printf("-----Next Child------\n");
-			print_structure(ejson->child);
-		}
+	printf("[");
+	int i;
+	for (i = 0; i < root->length; i++) {
+		print_structure(root->values[i]);
+		printf("\n");
+	}
 
-		if (ejson->next) {
-			printf("----Next Object------\n");
-			print_structure(ejson->next);
+	printf("]");
+}
+
+void print_structure(ejson_base* root) {
+
+	if (root) {
+		switch (root->type) {
+			case EJSON_INT:
+				printf("%ld", ((ejson_number*) root)->value);
+				break;
+			case EJSON_DOUBLE:
+				printf("%f", ((ejson_real*) root)->value);
+				break;
+			case EJSON_STRING:
+				printf("%s", ((ejson_string*) root)->value);
+				break;
+			case EJSON_BOOLEAN:
+				printf("%s", ((ejson_bool*) root)->value ?  "true" : "false");
+				break;
+			case EJSON_NULL:
+				printf("<null>");
+				break;
+			case EJSON_OBJECT:
+				print_object((ejson_object*) root);
+				break;
+			case EJSON_ARRAY:
+				print_array((ejson_array*) root);
+				break;
+			default:
+				printf("<Unkown type>");
+				break;
 		}
-	} else {
-		printf("ejson is null.\n");
 	}
 }
 
@@ -90,31 +119,41 @@ char* read_file(char* filename) {
 
 int main(int argc, char** argv) {
 
-	ejson_struct* ejson = NULL;
+	ejson_base* root = NULL;
 
 	char* test = strdup("{\"test\":1202}");
 
+	int i = 1;
+	int print = 0;
 	if (argc > 1) {
 
 		if (!strcmp(argv[1], "-h")) {
 			printf("%s <file>\t validates a json file.\n", argv[0]);
 			printf("%s -h\t shows this help.\n", argv[0]);
+			printf("%s -p <file>\n", argv[0]);
 			return 0;
+		} else if (!strcmp(argv[1], "-p")) {
+			print = 1;
+			i++;
 		}
-
-		free(test);
-		test = read_file(argv[1]);
+		if (argc > i) {
+			free(test);
+			test = read_file(argv[i]);
+		}
 	}
 
 	if (!test) {
 		return 1;
 	}
-	enum ejson_errors error = ejson_parse_warnings(&ejson, test, strlen(test), true, stderr);
 
-	//print_structure(ejson);
+	enum ejson_errors error = ejson_parse_warnings(test, strlen(test), true, stderr, &root);
 
-	ejson_cleanup(ejson);
+	if (print) {
+		print_structure(root);
+	}
+
+	ejson_cleanup(root);
 	free(test);
 
-	return error;
+	return error != EJSON_OK;
 }

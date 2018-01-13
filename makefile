@@ -2,14 +2,12 @@
 
 CFLAGS=-Wall -g
 
-all: libeasy_json.a easy_json_test easy_json_test_debug
+all: libeasy_json.a easy_json_test
 
 libeasy_json.a: easy_json.o
 	${AR} ${ARFLAGS} $@ $>
 
 easy_json_test: easy_json.c easy_json_test.c
-
-easy_json_test_debug: easy_json.c easy_json_test_debug.c
 
 run:
 	valgrind --leak-check=full ./easy_json_test
