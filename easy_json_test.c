@@ -41,17 +41,18 @@ extern void print_structure(ejson_base* root);
 
 void print_object(ejson_object* root) {
 	int i;
+	printf("{\n");
 	for (i = 0; i < root->length; i++) {
 		printf("%s: ", root->keys[i]->key);
 		print_structure(root->keys[i]->value);
 		printf("\n");
 	}
-	printf("\n");
+	printf("}\n");
 }
 
 void print_array(ejson_array* root) {
 
-	printf("[");
+	printf("[\n");
 	int i;
 	for (i = 0; i < root->length; i++) {
 		print_structure(root->values[i]);
@@ -150,6 +151,7 @@ int main(int argc, char** argv) {
 
 	if (print) {
 		print_structure(root);
+		printf("\n");
 	}
 
 	ejson_cleanup(root);

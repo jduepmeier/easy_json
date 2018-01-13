@@ -597,7 +597,11 @@ enum ejson_errors ejson_parse_warnings(char* string, size_t len, bool warnings, 
 	}
 
 	if (state.error != EJSON_OK && state.warnings) {
-		fprintf(state.log, "Error: %s (%c).\n", state.reason, state.data[state.pos]);
+		if (state.data[state.pos] == 0) {
+			fprintf(state.log, "Error: %s (<null>).\n", state.reason);
+		} else {
+			fprintf(state.log, "Error: %s (%c).\n", state.reason, state.data[state.pos]);
+		}
 	}
 
 	return state.error;
