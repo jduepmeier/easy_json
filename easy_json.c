@@ -125,7 +125,7 @@ char* ejson_parse_get_string(ejson_state* state) {
 		switch (state->data[state->pos]) {
 			case '\\':
 				state->pos++;
-				if (state->pos < state->len) {
+				if (state->pos >= state->len) {
 					break;
 				}
 				switch(state->data[state->pos]) {
