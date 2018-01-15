@@ -6,6 +6,8 @@
 
 #include "easy_json.h"
 
+extern ejson_base* ejson_identify(ejson_state* state);
+
 void ejson_cleanup_array(ejson_array* root) {
 
 	long i;
@@ -48,6 +50,59 @@ void ejson_cleanup(ejson_base* ejson) {
 	}
 }
 
+extern ejson_key* ejson_find_by_key(ejson_object* object, char* key, int case_insensitiv, int childs);
+ejson_key* ejson_find_by_key_in_array(ejson_array* arr, char* key, int case_insensitiv, int childs) {
+	int i;
+	ejson_key* elem = NULL;
+	for (i = 0; i < arr->length; i++) {
+		if (arr->values[i]->type == EJSON_OBJECT) {
+			elem = ejson_find_by_key((ejson_object*) arr->values[i], key, case_insensitiv, childs);
+			if (elem) {
+				return elem;
+			}
+		}
+	}
+
+	return NULL;
+}
+ejson_key* ejson_find_by_key(ejson_object* object, char* key, int case_insensitiv, int childs) {
+	int i;
+	for (i = 0; i < object->length; i++) {
+		if (case_insensitiv) {
+			if (!strcasecmp(object->keys[i]->key, key)) {
+				return object->keys[i];
+			}
+
+		} else {
+			if (!strcmp(object->keys[i]->key, key)) {
+				return object->keys[i];
+			}
+		}
+
+		if (childs) {
+			ejson_key* elem = NULL;
+			switch (object->keys[i]->value->type) {
+				case EJSON_OBJECT:
+					elem = ejson_find_by_key((ejson_object*) object->keys[i]->value, key, case_insensitiv, childs);
+					break;
+				case EJSON_ARRAY:
+					elem = ejson_find_by_key_in_array((ejson_array*) object->keys[i]->value, key, case_insensitiv, childs);
+					break;
+				default:
+					break;
+			}
+
+			if (elem) {
+				return elem;
+			}
+		}
+	}
+
+	return NULL;
+}
+
+
+
 enum ejson_errors ejson_get_int(ejson_base* root, int* i) {
 
 	if (root->type != EJSON_INT) {
@@ -61,18 +116,60 @@ enum ejson_errors ejson_get_int(ejson_base* root, int* i) {
 	return EJSON_OK;
 }
 
-enum ejson_errors ejson_get_double(ejson_base* root, double* i) {
+enum ejson_errors ejson_get_int_from_key(ejson_object* root, char* key, int case_insensitive, int childs, int* i) {
+	ejson_key* elem = ejson_find_by_key(root, key, case_insensitive, childs);
 
+	if (!elem) {
+		return EJSON_KEY_NOT_FOUND;
+	}
+	return ejson_get_int(elem->value, i);
+}
+
+
+enum ejson_errors ejson_get_double(ejson_base* root, double* d) {
 
 	if (root->type != EJSON_DOUBLE) {
 		return EJSON_WRONG_TYPE;
 	}
 
-	ejson_real* elem = (ejson_real*) root;
-
-	(*i) = elem->value;
+	(*d) = ((ejson_real*) root)->value;
 
 	return EJSON_OK;
+}
+
+enum ejson_errors ejson_get_double_from_key(ejson_object* root, char* key, int case_insensitive, int childs, double* d) {
+	ejson_key* elem = ejson_find_by_key(root, key, case_insensitive, childs);
+
+	if (!elem) {
+		return EJSON_KEY_NOT_FOUND;
+	}
+
+	return ejson_get_double(elem->value, d);
+}
+
+enum ejson_errors ejson_get_number(ejson_base* root, double* d) {
+	switch (root->type) {
+		case EJSON_DOUBLE:
+			(*d) = ((ejson_real*) root)->value;
+			break;
+		case EJSON_INT:
+			(*d) = ((ejson_number*) root)->value;
+			break;
+		default:
+			return EJSON_WRONG_TYPE;
+	}
+
+	return EJSON_OK;
+}
+
+enum ejson_errors ejson_get_number_from_key(ejson_object* root, char* key, int case_insensitive, int childs, double* d) {
+	ejson_key* elem = ejson_find_by_key(root, key, case_insensitive, childs);
+
+	if (!elem) {
+		return EJSON_KEY_NOT_FOUND;
+	}
+
+	return ejson_get_number(elem->value, d);
 }
 
 enum ejson_errors ejson_get_string(ejson_base* root, char** s) {
@@ -86,6 +183,16 @@ enum ejson_errors ejson_get_string(ejson_base* root, char** s) {
 	return EJSON_OK;
 }
 
+enum ejson_errors ejson_get_string_from_key(ejson_object* root, char* key, int case_insensitive, int childs, char** s) {
+	ejson_key* elem = ejson_find_by_key(root, key, case_insensitive, childs);
+
+	if (!elem) {
+		return EJSON_KEY_NOT_FOUND;
+	}
+
+	return ejson_get_string(elem->value, s);
+}
+
 enum ejson_errors ejson_get_boolean(ejson_base* root, bool* b) {
 	if (root->type != EJSON_BOOLEAN) {
 		return EJSON_WRONG_TYPE;
@@ -94,6 +201,16 @@ enum ejson_errors ejson_get_boolean(ejson_base* root, bool* b) {
 	(*b) = elem->value;
 
 	return EJSON_OK;
+}
+
+enum ejson_errors ejson_get_boolean_from_key(ejson_object* root, char* key, int case_insensitive, int childs, bool* b) {
+	ejson_key* elem = ejson_find_by_key(root, key, case_insensitive, childs);
+
+	if (!elem) {
+		return EJSON_KEY_NOT_FOUND;
+	}
+
+	return ejson_get_boolean(elem->value, b);
 }
 
 size_t ejson_trim(ejson_state* state) {
