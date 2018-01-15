@@ -421,7 +421,25 @@ ejson_base* ejson_parse_number(ejson_state* state) {
 		}
 	}
 
-	char* number = strndup(state->data + state->pos, state->len - state->pos);
+	size_t len;
+	for (len = 0; state->pos + len < state->len; len++) {
+		char c = state->data[state->pos + len];
+		if (!isdigit(c)
+				&& tolower(c) != 'e'
+				&& c != '+'
+				&& c != '-'
+				&& c != '.') {
+			break;
+		}
+	}
+
+	if (!isdigit(state->data[state->pos + len - 1])){
+		state->error = EJSON_INVALID_JSON;
+		state->reason = "Illegal end of number.";
+		return NULL;
+	}
+
+	char* number = strndup(state->data + state->pos, state->pos + len);
 
 	char* end = "";
 	long num = strtol(number, &end, 10);
@@ -478,7 +496,7 @@ ejson_object* ejson_parse_object(ejson_state* state) {
 	ejson->length = 0;
 
 	ejson_key* key;
-
+	int last_comma = false;
 	// while there is something
 	while (state->pos < state->len && state->data[state->pos] != '}') {
 		key = ejson_parse_key(state);
@@ -500,11 +518,13 @@ ejson_object* ejson_parse_object(ejson_state* state) {
 			return NULL;
 		}
 
+		last_comma = false;
 		// validate elements
 		switch(state->data[state->pos]) {
 			case ',':
 				state->data[state->pos] = 0;
 				state->pos++;
+				last_comma = true;
 				break;
 			case '}':
 				break;
@@ -514,6 +534,13 @@ ejson_object* ejson_parse_object(ejson_state* state) {
 				ejson_cleanup_object(ejson);
 				return NULL;
 		}
+	}
+
+	if (last_comma) {
+		state->error = EJSON_INVALID_JSON;
+		state->reason = "A trailing comma in an object is not allowed.";
+		ejson_cleanup_object(ejson);
+		return NULL;
 	}
 
 	if (state->data[state->pos] != '}') {
