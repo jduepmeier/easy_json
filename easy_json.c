@@ -121,6 +121,12 @@ char* ejson_parse_get_string(ejson_state* state) {
 	unsigned u_2;
 
 	while (state->pos < state->len) {
+		printf("data: %x\n", state->data[state->pos]);
+		if ((unsigned char ) state->data[state->pos] <= 0x001F) {
+			state->error = EJSON_INVALID_JSON;
+			state->reason = "Control characters must be escaped in strings";
+			return NULL;
+		}
 
 		switch (state->data[state->pos]) {
 			case '\\':
