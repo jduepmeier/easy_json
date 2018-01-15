@@ -417,7 +417,7 @@ ejson_base* ejson_parse_number(ejson_state* state) {
 	}
 
 	//printf("End: %c (%02X)\n", *end, *end);
-	if (*end == '.') {
+	if (*end == '.' || tolower(*end) == 'e') {
 		ejson_real* elem = calloc(1, sizeof(ejson_real));
 		elem->base.type = EJSON_DOUBLE;
 		end = "";
@@ -429,42 +429,6 @@ ejson_base* ejson_parse_number(ejson_state* state) {
 		elem->base.type = EJSON_INT;
 		elem->value = num;
 		root = (ejson_base*) elem;
-	}
-
-
-	if (tolower(*end) == 'e') {
-		char* s_exp = end + 1;
-		long exp = strtol(s_exp, &end, 10);
-
-		if (s_exp == end) {
-			state->error = EJSON_INVALID_JSON;
-			state->reason = "Cannot parse exponent.";
-			free(root);
-			return NULL;
-		}
-
-		double sum;
-		if (exp > 0) {
-			sum = 10;
-			for (; exp > 0; exp--) {
-				sum *= 10;
-			}
-		} else if (exp < 0) {
-			sum = 0.1;
-			for (; exp < 0; exp++) {
-				sum *= 0.1;
-			}
-		}
-
-		if (root->type == EJSON_INT) {
-			ejson_real* elem = calloc(1, sizeof(ejson_real));
-			elem->base.type = EJSON_DOUBLE;
-			elem->value = ((ejson_number*) root)->value * sum;
-			free(root);
-			root = (ejson_base*) elem;
-		} else {
-			((ejson_real*) root)->value *= sum;
-		}
 	}
 
 	state->pos = state->pos + (end - number);
