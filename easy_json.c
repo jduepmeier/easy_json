@@ -121,7 +121,6 @@ char* ejson_parse_get_string(ejson_state* state) {
 	unsigned u_2;
 
 	while (state->pos < state->len) {
-		printf("data: %x\n", state->data[state->pos]);
 		if ((unsigned char ) state->data[state->pos] <= 0x001F) {
 			state->error = EJSON_INVALID_JSON;
 			state->reason = "Control characters must be escaped in strings";
@@ -169,10 +168,22 @@ char* ejson_parse_get_string(ejson_state* state) {
 						//printf("Unicode: %.4s\n", string + curr);
 
 						strncpy(u, state->data + state->pos, 2);
-						u_1 = strtoul(u, NULL, 16);
+						char* end = NULL;
+						u_1 = strtoul(u, &end, 16);
+						if (u == end) {
+							state->error = EJSON_INVALID_JSON;
+							state->reason = "Invalid character in unicode escape sequence.";
+							return NULL;
+						}
 						state->pos += 2;
 						strncpy(u, state->data + state->pos, 2);
-						u_2 = strtoul(u, NULL, 16);
+						u_2 = strtoul(u, &end, 16);
+						if (u == end) {
+							state->error = EJSON_INVALID_JSON;
+							state->reason = "Invalid character in unicode escape sequence.";
+							return NULL;
+						}
+
 						if (u_1 == 0x00 && u_2 <= 0x7F) {
 							state->data[offset] = u_2;
 						} else if (u_1 <= 0x07 && u_2 >= 0x80) {
