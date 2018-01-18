@@ -1,12 +1,13 @@
 #include <stdlib.h>
 #include <stdbool.h>
 #include <string.h>
+#include <strings.h>
 #include <ctype.h>
 #include <stdio.h>
 
 #include "easy_json.h"
 
-extern ejson_base* ejson_identify(ejson_state* state);
+ejson_base* ejson_identify(ejson_state* state);
 
 void ejson_cleanup_array(ejson_array* root) {
 
@@ -50,13 +51,13 @@ void ejson_cleanup(ejson_base* ejson) {
 	}
 }
 
-extern ejson_key* ejson_find_by_key(ejson_object* object, char* key, int case_insensitiv, int childs);
-ejson_key* ejson_find_by_key_in_array(ejson_array* arr, char* key, int case_insensitiv, int childs) {
+ejson_base* ejson_find_by_key(ejson_object* object, char* key, int case_insensitiv, int childs);
+ejson_base* ejson_find_by_key_in_array(ejson_array* arr, char* key, int case_insensitiv, int childs) {
 	int i;
-	ejson_key* elem = NULL;
+	ejson_base* elem = NULL;
 	for (i = 0; i < arr->length; i++) {
 		if (arr->values[i]->type == EJSON_OBJECT) {
-			elem = ejson_find_by_key((ejson_object*) arr->values[i], key, case_insensitiv, childs);
+			elem = ejson_find_by_key(&arr->values[i]->object, key, case_insensitiv, childs);
 			if (elem) {
 				return elem;
 			}
@@ -65,28 +66,28 @@ ejson_key* ejson_find_by_key_in_array(ejson_array* arr, char* key, int case_inse
 
 	return NULL;
 }
-ejson_key* ejson_find_by_key(ejson_object* object, char* key, int case_insensitiv, int childs) {
+ejson_base* ejson_find_by_key(ejson_object* object, char* key, int case_insensitiv, int childs) {
 	int i;
 	for (i = 0; i < object->length; i++) {
 		if (case_insensitiv) {
 			if (!strcasecmp(object->keys[i]->key, key)) {
-				return object->keys[i];
+				return object->keys[i]->value;
 			}
 
 		} else {
 			if (!strcmp(object->keys[i]->key, key)) {
-				return object->keys[i];
+				return object->keys[i]->value;
 			}
 		}
 
 		if (childs) {
-			ejson_key* elem = NULL;
+			ejson_base* elem = NULL;
 			switch (object->keys[i]->value->type) {
 				case EJSON_OBJECT:
-					elem = ejson_find_by_key((ejson_object*) object->keys[i]->value, key, case_insensitiv, childs);
+					elem = ejson_find_by_key(&object->keys[i]->value->object, key, case_insensitiv, childs);
 					break;
 				case EJSON_ARRAY:
-					elem = ejson_find_by_key_in_array((ejson_array*) object->keys[i]->value, key, case_insensitiv, childs);
+					elem = ejson_find_by_key_in_array(&object->keys[i]->value->array, key, case_insensitiv, childs);
 					break;
 				default:
 					break;
@@ -109,7 +110,7 @@ enum ejson_errors ejson_get_int(ejson_base* root, int* i) {
 		return EJSON_WRONG_TYPE;
 	}
 
-	ejson_number* elem = (ejson_number*) root;
+	ejson_number* elem = &root->number;
 
 	(*i) = elem->value;
 
@@ -117,12 +118,12 @@ enum ejson_errors ejson_get_int(ejson_base* root, int* i) {
 }
 
 enum ejson_errors ejson_get_int_from_key(ejson_object* root, char* key, int case_insensitive, int childs, int* i) {
-	ejson_key* elem = ejson_find_by_key(root, key, case_insensitive, childs);
+	ejson_base* elem = ejson_find_by_key(root, key, case_insensitive, childs);
 
 	if (!elem) {
 		return EJSON_KEY_NOT_FOUND;
 	}
-	return ejson_get_int(elem->value, i);
+	return ejson_get_int(elem, i);
 }
 
 
@@ -132,28 +133,28 @@ enum ejson_errors ejson_get_double(ejson_base* root, double* d) {
 		return EJSON_WRONG_TYPE;
 	}
 
-	(*d) = ((ejson_real*) root)->value;
+	(*d) = root->real.value;
 
 	return EJSON_OK;
 }
 
 enum ejson_errors ejson_get_double_from_key(ejson_object* root, char* key, int case_insensitive, int childs, double* d) {
-	ejson_key* elem = ejson_find_by_key(root, key, case_insensitive, childs);
+	ejson_base* elem = ejson_find_by_key(root, key, case_insensitive, childs);
 
 	if (!elem) {
 		return EJSON_KEY_NOT_FOUND;
 	}
 
-	return ejson_get_double(elem->value, d);
+	return ejson_get_double(elem, d);
 }
 
 enum ejson_errors ejson_get_number(ejson_base* root, double* d) {
 	switch (root->type) {
 		case EJSON_DOUBLE:
-			(*d) = ((ejson_real*) root)->value;
+			(*d) = root->real.value;
 			break;
 		case EJSON_INT:
-			(*d) = ((ejson_number*) root)->value;
+			(*d) = root->number.value;
 			break;
 		default:
 			return EJSON_WRONG_TYPE;
@@ -163,13 +164,13 @@ enum ejson_errors ejson_get_number(ejson_base* root, double* d) {
 }
 
 enum ejson_errors ejson_get_number_from_key(ejson_object* root, char* key, int case_insensitive, int childs, double* d) {
-	ejson_key* elem = ejson_find_by_key(root, key, case_insensitive, childs);
+	ejson_base* elem = ejson_find_by_key(root, key, case_insensitive, childs);
 
 	if (!elem) {
 		return EJSON_KEY_NOT_FOUND;
 	}
 
-	return ejson_get_number(elem->value, d);
+	return ejson_get_number(elem, d);
 }
 
 enum ejson_errors ejson_get_string(ejson_base* root, char** s) {
@@ -177,40 +178,39 @@ enum ejson_errors ejson_get_string(ejson_base* root, char** s) {
 	if (root->type != EJSON_STRING) {
 		return EJSON_WRONG_TYPE;
 	}
-	ejson_string* elem = (ejson_string*) root;
+	ejson_string* elem = &root->string;
 	*s = elem->value;
 
 	return EJSON_OK;
 }
 
 enum ejson_errors ejson_get_string_from_key(ejson_object* root, char* key, int case_insensitive, int childs, char** s) {
-	ejson_key* elem = ejson_find_by_key(root, key, case_insensitive, childs);
+	ejson_base* elem = ejson_find_by_key(root, key, case_insensitive, childs);
 
 	if (!elem) {
 		return EJSON_KEY_NOT_FOUND;
 	}
 
-	return ejson_get_string(elem->value, s);
+	return ejson_get_string(elem, s);
 }
 
 enum ejson_errors ejson_get_boolean(ejson_base* root, bool* b) {
 	if (root->type != EJSON_BOOLEAN) {
 		return EJSON_WRONG_TYPE;
 	}
-	ejson_bool* elem = (ejson_bool*) root;
-	(*b) = elem->value;
+	(*b) = root->boolean.value;
 
 	return EJSON_OK;
 }
 
 enum ejson_errors ejson_get_boolean_from_key(ejson_object* root, char* key, int case_insensitive, int childs, bool* b) {
-	ejson_key* elem = ejson_find_by_key(root, key, case_insensitive, childs);
+	ejson_base* elem = ejson_find_by_key(root, key, case_insensitive, childs);
 
 	if (!elem) {
 		return EJSON_KEY_NOT_FOUND;
 	}
 
-	return ejson_get_boolean(elem->value, b);
+	return ejson_get_boolean(elem, b);
 }
 
 size_t ejson_trim(ejson_state* state) {
@@ -389,7 +389,7 @@ ejson_string* ejson_parse_string(ejson_state* state) {
 	}
 
 	ejson_string* elem = calloc(1, sizeof(ejson_string));
-	elem->base.type = EJSON_STRING;
+	elem->type = EJSON_STRING;
 	elem->value = s;
 
 	return elem;
@@ -401,7 +401,7 @@ ejson_array* ejson_parse_array(ejson_state* state) {
 	state->pos++;
 
 	ejson_array* elem = calloc(1, sizeof(ejson_array));
-	elem->base.type = EJSON_ARRAY;
+	elem->type = EJSON_ARRAY;
 	elem->length = 0;
 
 	ejson_base* lastChild = NULL;
@@ -466,7 +466,7 @@ ejson_array* ejson_parse_array(ejson_state* state) {
 
 ejson_bool* ejson_parse_bool(ejson_state* state) {
 	ejson_bool* elem = calloc(1, sizeof(ejson_bool));
-	elem->base.type = EJSON_BOOLEAN;
+	elem->type = EJSON_BOOLEAN;
 
 	if (ejson_trim(state) == 0) {
 		state->error = EJSON_INVALID_JSON;
@@ -501,7 +501,7 @@ ejson_null* ejson_parse_null(ejson_state* state) {
 	}
 
 	ejson_null* elem = calloc(1, sizeof(ejson_null));
-	elem->base.type = EJSON_NULL;
+	elem->type = EJSON_NULL;
 	state->pos += 4;
 	return elem;
 }
@@ -556,36 +556,40 @@ ejson_base* ejson_parse_number(ejson_state* state) {
 		return NULL;
 	}
 
-	char* number = strndup(state->data + state->pos, state->pos + len);
+	char* number = strndup(state->data + state->pos, len);
 
 	char* end = "";
 	long num = strtol(number, &end, 10);
-
 	if (number == end) {
 		state->error = EJSON_INVALID_JSON;
-		state->reason = "Not a valid number.\n";
+		state->reason = "Not a valid number.";
 		free(number);
 		return NULL;
 	}
-
-	//printf("End: %c (%02X)\n", *end, *end);
 	if (*end == '.' || tolower(*end) == 'e') {
 		ejson_real* elem = calloc(1, sizeof(ejson_real));
-		elem->base.type = EJSON_DOUBLE;
+		elem->type = EJSON_DOUBLE;
 		end = "";
 		elem->value = strtod(number, &end);
+
+		if (number == end) {
+			state->error = EJSON_INVALID_JSON;
+			state->reason = "Not a valid number.";
+			free(elem);
+			free(number);
+			return NULL;
+		}
+
 		root = (ejson_base*) elem;
 	} else {
-		//printf("Number is int\n");
 		ejson_number* elem = calloc(1, sizeof(ejson_number));
-		elem->base.type = EJSON_INT;
+		elem->type = EJSON_INT;
 		elem->value = num;
 		root = (ejson_base*) elem;
 	}
 
 	state->pos = state->pos + (end - number);
 	free(number);
-	printf("pos: %ld, len: %ld\n", state->pos, state->len);
 	return root;
 }
 
@@ -609,7 +613,7 @@ ejson_object* ejson_parse_object(ejson_state* state) {
 
 	ejson = calloc(1, sizeof(ejson_object));
 
-	ejson->base.type = EJSON_OBJECT;
+	ejson->type = EJSON_OBJECT;
 	ejson->length = 0;
 
 	ejson_key* key;
