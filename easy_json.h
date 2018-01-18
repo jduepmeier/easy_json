@@ -18,6 +18,7 @@ enum ejson_errors {
 	/** Cannot find key. */
 	EJSON_KEY_NOT_FOUND = 3
 };
+
 /**
  * Enum for json types. Number is split in double and int.
  */
@@ -94,7 +95,6 @@ typedef union ejson_base {
  */
 typedef struct {
 	enum ejson_errors error;
-	char* reason;
 	char* data;
 	size_t pos;
 	size_t len;

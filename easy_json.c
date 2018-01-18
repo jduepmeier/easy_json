@@ -5,9 +5,29 @@
 #include <ctype.h>
 #include <stdio.h>
 
+#include <stdarg.h>
+
 #include "easy_json.h"
 
+#define LOG_ERROR "ERROR"
+
 ejson_base* ejson_identify(ejson_state* state);
+
+void ejson_error(ejson_state* state, char* level, enum ejson_errors err, char* format, ...) {
+	state->error = err;
+
+	if (!state->warnings) {
+		return;
+	}
+
+	va_list ap;
+
+	va_start(ap, format);
+	fprintf(state->log, "%s (%ld/%ld): ", level, state->pos, state->len);
+	vfprintf(state->log, format, ap);
+	va_end(ap);
+}
+
 
 void ejson_cleanup_array(ejson_array* root) {
 
@@ -224,8 +244,7 @@ size_t ejson_trim(ejson_state* state) {
 char* ejson_parse_get_string(ejson_state* state) {
 
 	if (ejson_trim(state) == 0 || state->data[state->pos] != '"') {
-		state->error = EJSON_INVALID_JSON;
-		state->reason = "Cannot find leading \".";
+		ejson_error(state, LOG_ERROR, EJSON_INVALID_JSON, "Cannot find leading \".\n");
 		return NULL;
 	}
 
@@ -239,8 +258,7 @@ char* ejson_parse_get_string(ejson_state* state) {
 
 	while (state->pos < state->len) {
 		if ((unsigned char ) state->data[state->pos] <= 0x001F) {
-			state->error = EJSON_INVALID_JSON;
-			state->reason = "Control characters must be escaped in strings";
+			ejson_error(state, LOG_ERROR, EJSON_INVALID_JSON, "Control characters must be escaped in strings, found %.2x\n", state->data[state->pos]);
 			return NULL;
 		}
 
@@ -278,8 +296,7 @@ char* ejson_parse_get_string(ejson_state* state) {
 					case 'u':
 						state->pos++;
 						if (state->pos + 3 >= state->len) {
-							state->error = EJSON_INVALID_JSON;
-							state->reason = "Broken unicode.";
+							ejson_error(state, LOG_ERROR, EJSON_INVALID_JSON, "Broken unicode.\n");
 							return NULL;
 						}
 						//printf("Unicode: %.4s\n", string + curr);
@@ -288,16 +305,14 @@ char* ejson_parse_get_string(ejson_state* state) {
 						char* end = NULL;
 						u_1 = strtoul(u, &end, 16);
 						if (u == end) {
-							state->error = EJSON_INVALID_JSON;
-							state->reason = "Invalid character in unicode escape sequence.";
+							ejson_error(state, LOG_ERROR, EJSON_INVALID_JSON, "Invalid character in unicode escape sequence, found %.2x.\n", state->data[state->pos]);
 							return NULL;
 						}
 						state->pos += 2;
 						strncpy(u, state->data + state->pos, 2);
 						u_2 = strtoul(u, &end, 16);
 						if (u == end) {
-							state->error = EJSON_INVALID_JSON;
-							state->reason = "Invalid character in unicode escape sequence.";
+							ejson_error(state, LOG_ERROR, EJSON_INVALID_JSON, "Invalid character in unicode escape sequence, found %.2x.\n.", state->data[state->pos]);
 							return NULL;
 						}
 
@@ -322,8 +337,7 @@ char* ejson_parse_get_string(ejson_state* state) {
 						state->pos++;
 						break;
 					default:
-						state->error = EJSON_INVALID_JSON;
-						state->reason = "Unkown escape character.";
+						ejson_error(state, LOG_ERROR, EJSON_INVALID_JSON, "Unkown escape character, found %c\n.", state->data[state->pos]);
 						return NULL;
 				}
 				break;
@@ -340,8 +354,8 @@ char* ejson_parse_get_string(ejson_state* state) {
 		state->pos++;
 	}
 
-	state->error = EJSON_INVALID_JSON;
-	state->reason = "Cannot find trailing \".";
+	ejson_error(state, LOG_ERROR, EJSON_INVALID_JSON, "Cannot find trailing \", found %c.\n",
+			state->data[state->pos]);
 
 	return NULL;
 }
@@ -354,14 +368,12 @@ ejson_key* ejson_parse_key(ejson_state* state) {
 	}
 
 	if (ejson_trim(state) == 0) {
-		state->error = EJSON_INVALID_JSON;
-		state->reason = "Unexpected end of input.\n";
+		ejson_error(state, LOG_ERROR, EJSON_INVALID_JSON, "Unexpected end of input.\n");
 		return NULL;
 	}
 
 	if (state->data[state->pos] != ':') {
-		state->error = EJSON_INVALID_JSON;
-		state->reason = "Missing key.";
+		ejson_error(state, LOG_ERROR, EJSON_INVALID_JSON, "Missing :, found %c.\n", state->data[state->pos]);
 		return NULL;
 	}
 
@@ -422,8 +434,7 @@ ejson_array* ejson_parse_array(ejson_state* state) {
 		elem->values[elem->length - 1] = lastChild;
 
 		if (ejson_trim(state) == 0) {
-			state->error = EJSON_INVALID_JSON;
-			state->reason = "Missing trailing array bracket(]).";
+			ejson_error(state, LOG_ERROR, EJSON_INVALID_JSON, "Missing trailing array bracket(]), found %c.\n", state->data[state->pos]);
 			ejson_cleanup_array(elem);
 			return NULL;
 		}
@@ -437,23 +448,20 @@ ejson_array* ejson_parse_array(ejson_state* state) {
 			case ']':
 				break;
 			default:
-				state->error = EJSON_INVALID_JSON;
-				state->reason = "Cannot parse this char in array parsing";
+				ejson_error(state, LOG_ERROR, EJSON_INVALID_JSON, "Only , or ] is allowed at this position. Found %c.\n", state->data[state->pos]);
 				ejson_cleanup_array(elem);
 				return NULL;
 		}
 	}
 
 	if (last_comma) {
-		state->error = EJSON_INVALID_JSON;
-		state->reason = "Comma as last character in an array is not allowed.";
+		ejson_error(state, LOG_ERROR, EJSON_INVALID_JSON, "Comma as last character in an array is not allowed.\n");
 		ejson_cleanup_array(elem);
 		return NULL;
 	}
 
 	if (state->pos >= state->len || state->data[state->pos] != ']') {
-		state->error = EJSON_INVALID_JSON;
-		state->reason = "Cannot find trailing ].";
+		ejson_error(state, LOG_ERROR, EJSON_INVALID_JSON, "Cannot find trailing ]\n");
 		ejson_cleanup_array(elem);
 		return NULL;
 	}
@@ -469,12 +477,11 @@ ejson_bool* ejson_parse_bool(ejson_state* state) {
 	elem->type = EJSON_BOOLEAN;
 
 	if (ejson_trim(state) == 0) {
-		state->error = EJSON_INVALID_JSON;
-		state->reason = "Unexpected end of input.";
+		ejson_error(state, LOG_ERROR, EJSON_INVALID_JSON, "Unexpected end of input.\n");
 		free(elem);
 		return NULL;
 	}
-	printf("pos: %ld, len: %ld\n", state->pos, state->len);
+
 	if (state->pos + 3 < state->len && !strncmp(state->data + state->pos, "true", 4)) {
 		elem->value = 1;
 		state->pos += 4;
@@ -482,8 +489,7 @@ ejson_bool* ejson_parse_bool(ejson_state* state) {
 		elem->value = 0;
 		state->pos += 5;
 	} else {
-		state->error = EJSON_INVALID_JSON;
-		state->reason = "Cannot parse boolean.";
+		ejson_error(state, LOG_ERROR, EJSON_INVALID_JSON, "Cannot parse boolean.\n");
 		free(elem);
 		return NULL;
 	}
@@ -493,10 +499,8 @@ ejson_bool* ejson_parse_bool(ejson_state* state) {
 
 ejson_null* ejson_parse_null(ejson_state* state) {
 
-
 	if (state->pos + 4 < state->len && strncmp(state->data + state->pos, "null", 4)) {
-		state->error = EJSON_INVALID_JSON;
-		state->reason = "Cannot parse null.";
+		ejson_error(state, LOG_ERROR, EJSON_INVALID_JSON, "Cannot parse null.\n");
 		return NULL;
 	}
 
@@ -515,25 +519,21 @@ ejson_base* ejson_parse_number(ejson_state* state) {
 	}
 
 	if (state->data[state->pos] == '+') {
-		state->error = EJSON_INVALID_JSON;
-		state->reason = "The plus character in front of a number is not allowed.\n";
+		ejson_error(state, LOG_ERROR, EJSON_INVALID_JSON, "The plus character in front of a number is not allowed.\n");
 		return NULL;
 	}
 
 	if (state->pos + offset >= state->len) {
-		state->error = EJSON_INVALID_JSON;
-		state->reason = "Invalid end of stream.";
+		ejson_error(state, LOG_ERROR, EJSON_INVALID_JSON, "Invalid end of stream.\n");
 		return NULL;
 	}
 
 	if (state->data[state->pos + offset] == '0') {
 		if (state->pos + offset + 1 >= state->len) {
-			state->error = EJSON_INVALID_JSON;
-			state->reason = "Invalid end of stream.";
+			ejson_error(state, LOG_ERROR, EJSON_INVALID_JSON, "Invalid end of stream.\n");
 			return NULL;
 		} else if (isdigit(state->data[state->pos + offset + 1])) {
-			state->error = EJSON_INVALID_JSON;
-			state->reason = "Invalid number.";
+			ejson_error(state, LOG_ERROR, EJSON_INVALID_JSON, "Invalid number.\n");
 			return NULL;
 		}
 	}
@@ -551,8 +551,7 @@ ejson_base* ejson_parse_number(ejson_state* state) {
 	}
 
 	if (!isdigit(state->data[state->pos + len - 1])){
-		state->error = EJSON_INVALID_JSON;
-		state->reason = "Illegal end of number.";
+		ejson_error(state, LOG_ERROR, EJSON_INVALID_JSON, "Illegal end of number.\n");
 		return NULL;
 	}
 
@@ -561,8 +560,7 @@ ejson_base* ejson_parse_number(ejson_state* state) {
 	char* end = "";
 	long num = strtol(number, &end, 10);
 	if (number == end) {
-		state->error = EJSON_INVALID_JSON;
-		state->reason = "Not a valid number.";
+		ejson_error(state, LOG_ERROR, EJSON_INVALID_JSON, "Not a valid number.\n");
 		free(number);
 		return NULL;
 	}
@@ -573,8 +571,7 @@ ejson_base* ejson_parse_number(ejson_state* state) {
 		elem->value = strtod(number, &end);
 
 		if (number == end) {
-			state->error = EJSON_INVALID_JSON;
-			state->reason = "Not a valid number.";
+			ejson_error(state, LOG_ERROR, EJSON_INVALID_JSON, "Not a valid number.\n");
 			free(elem);
 			free(number);
 			return NULL;
@@ -597,17 +594,11 @@ ejson_object* ejson_parse_object(ejson_state* state) {
 
 	ejson_object* ejson = NULL;
 
-	if (ejson_trim(state) == 0) {
-		state->error = EJSON_INVALID_JSON;
-		state->reason = "Cannot find leading {.";
+	if (ejson_trim(state) == 0 || state->data[state->pos] != '{') {
+		ejson_error(state, LOG_ERROR, EJSON_INVALID_JSON, "Cannot find leading {.\n");
 		return NULL;
 	}
 
-	if (state->data[state->pos] != '{') {
-		state->error = EJSON_INVALID_JSON;
-		state->reason = "Cannot find leading {.";
-		return NULL;
-	}
 	state->data[state->pos] = 0;
 	state->pos++;
 
@@ -621,9 +612,15 @@ ejson_object* ejson_parse_object(ejson_state* state) {
 	// while there is something
 	while (state->pos < state->len && state->data[state->pos] != '}') {
 		key = ejson_parse_key(state);
-		// check for error
-		if (state->error != EJSON_OK || !key) {
+
+		if (!key) {
 			ejson_cleanup_object(ejson);
+			return NULL;
+		}
+		// check for error
+		if (state->error != EJSON_OK) {
+			ejson_cleanup_object(ejson);
+			free(key);
 			return NULL;
 		}
 
@@ -633,8 +630,7 @@ ejson_object* ejson_parse_object(ejson_state* state) {
 		ejson->keys[ejson->length - 1] = key;
 
 		if (ejson_trim(state) == 0) {
-			state->error = EJSON_INVALID_JSON;
-			state->reason = "Unexpected end of input.";
+			ejson_error(state, LOG_ERROR, EJSON_INVALID_JSON, "Unexpected end of input.\n");
 			ejson_cleanup_object(ejson);
 			return NULL;
 		}
@@ -650,23 +646,20 @@ ejson_object* ejson_parse_object(ejson_state* state) {
 			case '}':
 				break;
 			default:
-				state->error = EJSON_INVALID_JSON;
-				state->reason = "Invalid char at this position.";
+				ejson_error(state, LOG_ERROR, EJSON_INVALID_JSON, "Invalid char at this position.\n");
 				ejson_cleanup_object(ejson);
 				return NULL;
 		}
 	}
 
 	if (last_comma) {
-		state->error = EJSON_INVALID_JSON;
-		state->reason = "A trailing comma in an object is not allowed.";
+		ejson_error(state, LOG_ERROR, EJSON_INVALID_JSON, "A trailing comma in an object is not allowed.\n");
 		ejson_cleanup_object(ejson);
 		return NULL;
 	}
 
 	if (state->data[state->pos] != '}') {
-		state->error = EJSON_INVALID_JSON;
-		state->reason = "Cannot find trailing }.";
+		ejson_error(state, LOG_ERROR, EJSON_INVALID_JSON, "Cannot find trailing }.\n");
 		ejson_cleanup_object(ejson);
 		return NULL;
 	}
@@ -682,14 +675,12 @@ ejson_base* ejson_identify(ejson_state* state) {
 	state->counter++;
 
 	if (state->counter > MAX_JSON_DEPTH) {
-		state->error = EJSON_INVALID_JSON;
-		state->reason = "Too many levels of depth.";
+		ejson_error(state, LOG_ERROR, EJSON_INVALID_JSON, "Too many levels of depth. Max level is %d\n", MAX_JSON_DEPTH);
 		return NULL;
 	}
 
 	if (ejson_trim(state) == 0) {
-		state->error = EJSON_INVALID_JSON;
-		state->reason = "Unexcepted end of input.";
+		ejson_error(state, LOG_ERROR, EJSON_INVALID_JSON, "Unexcepted end of input.\n");
 		return NULL;
 	}
 
@@ -728,8 +719,7 @@ ejson_base* ejson_identify(ejson_state* state) {
 			return (ejson_base*) ejson_parse_null(state);
 			break;
 		default:
-			state->error = EJSON_INVALID_JSON;
-			state->reason = "Cannot identify next token. Unkown identifier";
+			ejson_error(state, LOG_ERROR, EJSON_INVALID_JSON, "Cannot identify next token. Unkown identifier.\n");
 			return NULL;
 	}
 }
@@ -741,7 +731,6 @@ enum ejson_errors ejson_parse(char* string, size_t len, ejson_base** root) {
 enum ejson_errors ejson_parse_warnings(char* string, size_t len, bool warnings, FILE* log, ejson_base** root) {
 	ejson_state state = {
 		.error = EJSON_OK,
-		.reason = "",
 		.counter = 0l,
 		.data = string,
 		.pos = 0,
@@ -758,18 +747,9 @@ enum ejson_errors ejson_parse_warnings(char* string, size_t len, bool warnings, 
 
 	if (state.error == EJSON_OK) {
 		if (ejson_trim(&state) > 0) {
-			state.error = EJSON_INVALID_JSON;
-			state.reason = "There are characters left.";
+			ejson_error(&state, LOG_ERROR, EJSON_INVALID_JSON, "There are characters left.\n");
 			ejson_cleanup(*root);
 			*root = NULL;
-		}
-	}
-
-	if (state.error != EJSON_OK && state.warnings) {
-		if (state.data[state.pos] == 0) {
-			fprintf(state.log, "Error: %s (<null>).\n", state.reason);
-		} else {
-			fprintf(state.log, "Error: %s (%c).\n", state.reason, state.data[state.pos]);
 		}
 	}
 
