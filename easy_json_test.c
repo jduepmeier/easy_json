@@ -37,7 +37,7 @@ void print_type(ejson_base* ejson) {
 	}
 }
 
-extern void print_structure(ejson_base* root);
+void print_structure(ejson_base* root);
 
 void print_object(ejson_object* root) {
 	int i;
@@ -107,7 +107,7 @@ char* read_file(char* filename) {
 	long fsize = ftell(f);
 	fseek(f, 0, SEEK_SET);
 
-	char* string =  malloc(fsize + 1);
+	char* string =  calloc(fsize + 1, sizeof(char));
 	if (fread(string, fsize, 1, f) == 0) {
 		return NULL;
 	}
