@@ -1,6 +1,6 @@
 # easy_json - lightweigth json parsing
 
-[![Coverity Scan Build Status]](https://scan.coverity.com/projects/14899/badge.svg)](https://scan.coverity.com/projects/jduepmeier-easy_json)
+[![Coverity Scan Build Status](https://scan.coverity.com/projects/14899/badge.svg)](https://scan.coverity.com/projects/jduepmeier-easy_json)
 
 This is a lightweight library to parse json in c.
 
