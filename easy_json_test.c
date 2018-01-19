@@ -3,6 +3,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
+#include <errno.h>
 
 void print_type(ejson_base* ejson) {
 
@@ -105,11 +106,26 @@ char* read_file(char* filename) {
 
 	fseek(f, 0, SEEK_END);
 	long fsize = ftell(f);
+
+	if (fsize < 0) {
+		fprintf(stderr, "Cannot get size of file: %s\n", strerror(errno));
+		fclose(f);
+		return NULL;
+	}
+
 	fseek(f, 0, SEEK_SET);
 
 	char* string =  calloc(fsize + 1, sizeof(char));
-	if (fread(string, fsize, 1, f) == 0) {
-		return NULL;
+	size_t offset = 0;
+	size_t read = 0;
+	while (offset < fsize) {
+		read = fread(string + offset, 1, fsize - offset, f);
+		if (read == 0) {
+			fprintf(stderr, "Cannot read full file.\n");
+			fclose(f);
+			return NULL;
+		}
+		offset += read;
 	}
 	fclose(f);
 
