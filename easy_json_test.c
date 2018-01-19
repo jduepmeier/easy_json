@@ -123,6 +123,7 @@ char* read_file(char* filename) {
 		if (read == 0) {
 			fprintf(stderr, "Cannot read full file.\n");
 			fclose(f);
+			free(string);
 			return NULL;
 		}
 		offset += read;
