@@ -97,13 +97,13 @@ typedef struct {
 	enum ejson_errors error;
 	char* data;
 	size_t pos;
-	size_t len;
+	const size_t len;
 	long counter;
-	bool warnings;
+	const bool warnings;
 	FILE* log;
 } ejson_state;
 
-ejson_base* ejson_find_by_key(ejson_object* root, char* key, int case_insensitive, int childs);
+ejson_base* ejson_find_by_key(const ejson_object* root, const char* key, const int case_insensitive, const int childs);
 
 /**
  * Gets the value as int from given struct.
@@ -111,7 +111,7 @@ ejson_base* ejson_find_by_key(ejson_object* root, char* key, int case_insensitiv
  * @param int* i place for the returned int
  * @return enum ejson_errors returns EJSON_WRONG_TYPE if there is an error.
  */
-enum ejson_errors ejson_get_int(ejson_base* root, int* i);
+enum ejson_errors ejson_get_int(const ejson_base* root, int* i);
 
 /**
  * Gets the value of the given key in an object as int.
@@ -122,7 +122,7 @@ enum ejson_errors ejson_get_int(ejson_base* root, int* i);
  * @param char** i place for the returned int
  * @return enum ejson_errors returns EJSON_WRONG_TYPE if there is an error.
  */
-enum ejson_errors ejson_get_int_from_key(ejson_object* root, char* key, int case_insensitive, int childs, int* i);
+enum ejson_errors ejson_get_int_from_key(const ejson_object* root, const char* key, const int case_insensitive, const int childs, int* i);
 
 /**
  * Gets the value as int from given struct.
@@ -130,7 +130,7 @@ enum ejson_errors ejson_get_int_from_key(ejson_object* root, char* key, int case
  * @param int* i place for the returned int
  * @return enum ejson_errors returns EJSON_WRONG_TYPE if there is an error.
  */
-enum ejson_errors ejson_get_double(ejson_base* root, double* d);
+enum ejson_errors ejson_get_double(const ejson_base* root, double* d);
 
 /**
  * Gets the value of the given key in an object as double.
@@ -141,7 +141,7 @@ enum ejson_errors ejson_get_double(ejson_base* root, double* d);
  * @param char** i place for the returned double
  * @return enum ejson_errors returns EJSON_WRONG_TYPE if there is an error.
  */
-enum ejson_errors ejson_get_double_from_key(ejson_object* root, char* key, int case_insensitive, int childs, double* d);
+enum ejson_errors ejson_get_double_from_key(const ejson_object* root, const char* key, const int case_insensitive, const int childs, double* d);
 
 /**
  * Gets the value as double from the given struct. It also returns the number if the type is int.
@@ -149,7 +149,7 @@ enum ejson_errors ejson_get_double_from_key(ejson_object* root, char* key, int c
  * @param double* i place for the returned double
  * @return enum ejson_errors returns EJSON_WRONG_TYPE if there is an error.
  */
-enum ejson_errors ejson_get_number(ejson_base* root, double* d);
+enum ejson_errors ejson_get_number(const ejson_base* root, double* d);
 
 /**
  * Gets the value of the given key in an object as double.
@@ -161,7 +161,7 @@ enum ejson_errors ejson_get_number(ejson_base* root, double* d);
  * @param double* i place for the returned double
  * @return enum ejson_errors returns EJSON_WRONG_TYPE if there is an error.
  */
-enum ejson_errors ejson_get_number_from_key(ejson_object* root, char* key, int case_insensitive, int childs, double* d);
+enum ejson_errors ejson_get_number_from_key(const ejson_object* root, const char* key, const int case_insensitive, const int childs, double* d);
 
 /**
  * Gets the value of the given struct as string.
@@ -169,7 +169,7 @@ enum ejson_errors ejson_get_number_from_key(ejson_object* root, char* key, int c
  * @param char** s place for holding the string. Must not be freed.
  * @return enum ejson_errors returns EJSON_WRONG_TYPE if there is an error.
  */
-enum ejson_errors ejson_get_string(ejson_base* root, char** s);
+enum ejson_errors ejson_get_string(const ejson_base* root, char** s);
 
 /**
  * Gets the value of the given key in an object as string.
@@ -180,7 +180,7 @@ enum ejson_errors ejson_get_string(ejson_base* root, char** s);
  * @param char** i place for the returned string
  * @return enum ejson_errors returns EJSON_WRONG_TYPE if there is an error.
  */
-enum ejson_errors ejson_get_string_from_key(ejson_object* root, char* key, int case_insensitive, int childs, char** i);
+enum ejson_errors ejson_get_string_from_key(const ejson_object* root, const char* key, const int case_insensitive, const int childs, char** i);
 
 /**
  * Gets the value as boolean from the given struct.
@@ -188,7 +188,7 @@ enum ejson_errors ejson_get_string_from_key(ejson_object* root, char* key, int c
  * @param bool* b place for holding the boolean value.
  * @return enum ejson_errors returns EJSON_WRONG_TYPE if there is an error.
  */
-enum ejson_errors ejson_get_boolean(ejson_base* root, bool* b);
+enum ejson_errors ejson_get_boolean(const ejson_base* root, bool* b);
 
 /**
  * Gets the value of the given key in an object as bool.
@@ -199,7 +199,7 @@ enum ejson_errors ejson_get_boolean(ejson_base* root, bool* b);
  * @param char** i place for the returned bool
  * @return enum ejson_errors returns EJSON_WRONG_TYPE if there is an error.
  */
-enum ejson_errors ejson_get_boolean_from_key(ejson_object* root, char* key, int case_insensitive, int childs, bool* i);
+enum ejson_errors ejson_get_boolean_from_key(const ejson_object* root, const char* key, const int case_insensitive, const int childs, bool* i);
 
 /**
  * Parses an json string into the given structure pointer.
@@ -210,12 +210,12 @@ enum ejson_errors ejson_get_boolean_from_key(ejson_object* root, char* key, int 
  * 	on the given memory.
  * @return enum ejson_errors enum with error flags for parsing. @see enum
  */
-enum ejson_errors ejson_parse(char* string, size_t len, ejson_base** root);
+enum ejson_errors ejson_parse(char* string, const size_t len, ejson_base** root);
 
 /**
  * Same as ejson_parse but allows to write the warnings to a file or stderr.
  */
-enum ejson_errors ejson_parse_warnings(char* string, size_t len, bool warnings, FILE* outputstream, ejson_base** root);
+enum ejson_errors ejson_parse_warnings(char* string, const size_t len, const bool warnings, FILE* outputstream, ejson_base** root);
 
 /**
  * Cleanup the json structure.
