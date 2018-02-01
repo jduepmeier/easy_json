@@ -8,7 +8,7 @@ all: libeasy_json.a easy_json_test
 	$(CC) $(CFLAGS) $(LDFLAGS) -c -o $@ $<
 
 libeasy_json.a: easy_json.o
-	${AR} ${ARFLAGS} $@ $>
+	${AR} ${ARFLAGS} $@ $> $^
 
 easy_json_test: easy_json.o easy_json_test.o
 
